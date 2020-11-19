@@ -9,9 +9,11 @@ router.get('/', (req, res) => res.send('HOME'));
 router.get('/posts', post.getPosts);
 router.get('/posts/:slug', post.getPost);
 router.get('/verify', user.verifyUser);
+router.get('/reset', user.resetPassword);
 
 router.post('/register', user.registerUser);
 router.post('/login', user.loginUser);
+router.post('/reset', user.sendPasswordResetMail);
 router.post('/posts', verifyToken, post.addNewPost);
 
 router.put('/posts/:slug', verifyToken, post.editPost);

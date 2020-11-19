@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import User from '../models/User.js';
+import sendEmail from '../utils/sendEmail.js';
 import { validateRegister, validateLogin } from '../validation/user.js';
 
 const user = {
@@ -50,34 +51,23 @@ const user = {
       process.env.TOKEN_SECRET
     );
 
-    const message = {
-      from: 'covalmichael23@gmail.com',
-      to: req.body.email,
-      subject: 'Confirm register !',
-      html: `
-        <h1 style="font-size: 2rem;">Confirm email<h1>
-        <a
-          href="http://localhost:8000/api/verify?t=${token}" 
-          target="_blank"
-          style="text-decoration:none;">
-          Potwierdz konto
-        </a>
-      `,
-    };
-
-    const transporter = nodemailer.createTransport({
-      tls: {
-        rejectUnauthorized: false,
-      },
-      service: 'gmail',
-      auth: {
-        user: process.env.MAIL,
-        pass: process.env.PASSWORD,
-      },
-    });
+    const messageHTML = `
+      <h1 style="font-size: 2rem;">Confirm email<h1>
+      <a
+        href="http://localhost:8000/api/verify?t=${token}" 
+        target="_blank"
+        style="text-decoration:none;">
+        Potwierdz konto
+      </a>
+    `;
 
     try {
-      await transporter.sendMail(message);
+      await sendMail({
+        receiverEmail: req.body.email,
+        subject: 'Verify User !',
+        html: messageHTML,
+      });
+      res.status(200).send('Email sended !');
     } catch (err) {
       res.status(400).send(err);
     }
@@ -95,6 +85,48 @@ const user = {
       console.log(err);
       res.status(400).send(err);
     }
+  },
+
+  sendPasswordResetMail: async (req, res) => {
+    const email = req.body.email;
+    const user = await User.findOne({ email });
+
+    if (!user)
+      return res
+        .status(400)
+        .send({ error: `There is not accout with ${email} email` });
+
+    const token = jwt.sign({ email }, process.env.TOKEN_SECRET);
+
+    const messageHTML = `
+      <h1 style="font-size: 2rem;">Zresetuj hasło<h1>
+      <a
+        href="http://localhost:8000/api/reset?t=${token}" 
+        target="_blank"
+        style="text-decoration:none;">
+        Zresetuj hasło
+      </a>
+    `;
+
+    try {
+      await sendEmail({
+        receiverEmail: email,
+        subject: 'Reset Password !',
+        html: messageHTML,
+      });
+      res.status(200).send('Email sended!');
+    } catch (err) {
+      res.status(400).send(err);
+    }
+  },
+
+  resetPassword: async (req, res) => {
+    const token = req.query.t;
+    const tokenData = jwt.verify(token, process.env.TOKEN_SECRET);
+
+    const user = await User.findOne({ email: tokenData.email });
+
+    console.log(user);
   },
 
   loginUser: async (req, res) => {
