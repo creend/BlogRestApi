@@ -9,6 +9,7 @@ const postValidation = Joi.object({
   title: Joi.string().required().min(1),
   content: Joi.string().required().min(1),
   date: Joi.string(),
+  edited: Joi.boolean(),
 });
 
 export const validatePost = (data) => postValidation.validate(data);

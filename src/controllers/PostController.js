@@ -10,6 +10,7 @@ const post = {
       userType: req.user.type,
       title: req.body.title,
       content: req.body.content,
+      edited: false,
     };
     const { error } = validatePost(newPostBody);
 
