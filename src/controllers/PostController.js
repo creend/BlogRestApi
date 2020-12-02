@@ -8,7 +8,7 @@ const post = {
     const newPostBody = {
       author: req.user.username,
       userType: req.user.type,
-      title: req.body.title,
+      title: req.body.title.replace(/\s/g, '-'),
       content: req.body.content,
       edited: false,
     };
@@ -22,13 +22,12 @@ const post = {
       return res.status(400).send('Access denied');
     }
 
-    const post = new Post(newPostBody);
-
     try {
+      const post = new Post(newPostBody);
       const savedPost = await post.save();
       res.status(200).send(savedPost);
     } catch (err) {
-      res.status(400).send({ err });
+      res.status(400).send('Cannot add post with the same title');
     }
   },
 
@@ -73,17 +72,18 @@ const post = {
 
   findPost: async (req, res) => {
     try {
-      const post = await Post.findOne({ _id: req.params.id });
+      const post = await Post.findOne({ title: req.params.title });
       if (!post) return res.status(400).send({ err: 'Cannot find post' });
+      post.title = req.params.title.replace(/\-/g, ' ');
       res.status(200).send(post);
     } catch (err) {
-      res.status(400).send(`Cannot find post with id: ${req.params.id}`);
+      res.status(400).send(`Cannot find post with title: ${req.params.title}`);
     }
   },
 
   editPost: async (req, res) => {
     try {
-      const searchedPost = await Post.findOne({ _id: req.params.id });
+      const searchedPost = await Post.findOne({ title: req.params.title });
       if (
         searchedPost.userType === USER_TYPES[1] ||
         searchedPost.author === req.user.username
@@ -92,12 +92,16 @@ const post = {
           edited: true,
           userType: searchedPost.userType,
           createdAt: searchedPost.createdAt,
-          title: req.body.title,
+          title: req.body.title.replace(/\s/g, '-'),
           content: req.body.content,
           author: searchedPost.author,
         };
-        await searchedPost.update(newPostBody);
-        res.status(200).send(searchedPost);
+        try {
+          await searchedPost.update(newPostBody);
+          res.status(200).send(searchedPost);
+        } catch (err) {
+          res.status(400).send('cannot set title like another post');
+        }
       } else {
         res.status(400).send('Access denied');
       }
@@ -108,13 +112,13 @@ const post = {
 
   deletePost: async (req, res) => {
     try {
-      const searchedPost = await Post.findOne({ _id: req.params.id });
+      const searchedPost = await Post.findOne({ title: req.params.title });
       if (!searchedPost) return res.status(400).send('Post doesnt exist');
       if (
         searchedPost.userType === USER_TYPES[1] ||
         searchedPost.author === req.user.username
       ) {
-        await Post.deleteOne({ _id: req.params.id });
+        await Post.deleteOne({ title: req.params.title });
         res.status(200).send('Succesfuely deleted');
       } else {
         res.status(400).send('Access denied');
