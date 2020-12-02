@@ -2,7 +2,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import User from '../models/User.js';
-import sendEmail from '../utils/sendEmail.js';
 import { validateRegister, validateLogin } from '../validation/user.js';
 
 const user = {
@@ -16,7 +15,7 @@ const user = {
 
     const usernameExist = await User.findOne({ username: req.body.username });
     if (usernameExist)
-      return res.status(400).send({ error: `This Username already exist` });
+      return res.status(400).send({ error: `Username already exist` });
 
     if (req.body.password !== req.body.retypedPassword)
       return res.status(400).send({ error: `Passwords are not identical` });
@@ -31,13 +30,6 @@ const user = {
       type: req.body.type,
       verified: false,
     });
-
-    try {
-      const savedUser = await user.save();
-      res.status(500).send(savedUser);
-    } catch (err) {
-      res.status(404).send(err);
-    }
 
     const token = jwt.sign(
       {
@@ -54,22 +46,42 @@ const user = {
     const messageHTML = `
       <h1 style="font-size: 2rem;">Confirm email<h1>
       <a
-        href="http://localhost:8000/api/verify?t=${token}" 
+        href="http://localhost:3000/verify?t=${token}" 
         target="_blank"
         style="text-decoration:none;">
         Potwierdz konto
       </a>
     `;
 
+    const transporter = nodemailer.createTransport({
+      tls: {
+        rejectUnauthorized: false,
+      },
+      service: 'gmail',
+      auth: {
+        user: process.env.MAIL,
+        pass: process.env.PASSWORD,
+      },
+    });
+
+    const message = {
+      from: 'covalmichael23@gmail.com',
+      to: req.body.email,
+      subject: 'Verify User !',
+      html: messageHTML,
+    };
+
     try {
-      await sendMail({
-        receiverEmail: req.body.email,
-        subject: 'Verify User !',
-        html: messageHTML,
-      });
-      res.status(200).send('Email sended !');
+      await transporter.sendMail(message);
     } catch (err) {
-      res.status(400).send(err);
+      return res.status(400).send({ err: 'Cannot send email' });
+    }
+
+    try {
+      const savedUser = await user.save();
+      res.status(200).send(savedUser);
+    } catch (err) {
+      return res.status(404).send(err);
     }
   },
 
@@ -80,14 +92,14 @@ const user = {
 
     try {
       await User.findByIdAndUpdate(verifiedUser._id, verifiedUser);
-      res.redirect('http://localhost:8000/api/');
+      res.status(200).send(verifiedUser.verified);
     } catch (err) {
-      console.log(err);
       res.status(400).send(err);
     }
   },
 
   sendPasswordResetMail: async (req, res) => {
+    // DO DOPRACOWANIA
     const email = req.body.email;
     const user = await User.findOne({ email });
 
@@ -101,19 +113,33 @@ const user = {
     const messageHTML = `
       <h1 style="font-size: 2rem;">Zresetuj hasło<h1>
       <a
-        href="http://localhost:8000/api/reset?t=${token}" 
+        href="http://localhost:3000/api/reset?t=${token}" 
         target="_blank"
         style="text-decoration:none;">
         Zresetuj hasło
       </a>
     `;
 
+    const transporter = nodemailer.createTransport({
+      tls: {
+        rejectUnauthorized: false,
+      },
+      service: 'gmail',
+      auth: {
+        user: process.env.MAIL,
+        pass: process.env.PASSWORD,
+      },
+    });
+
+    const message = {
+      from: 'covalmichael23@gmail.com',
+      to: req.body.email,
+      subject: 'Reset password',
+      html: messageHTML,
+    };
+
     try {
-      await sendEmail({
-        receiverEmail: email,
-        subject: 'Reset Password !',
-        html: messageHTML,
-      });
+      await transporter.sendMail(message);
       res.status(200).send('Email sended!');
     } catch (err) {
       res.status(400).send(err);
@@ -121,12 +147,11 @@ const user = {
   },
 
   resetPassword: async (req, res) => {
+    // DO DOPRACOWANIA
     const token = req.query.t;
     const tokenData = jwt.verify(token, process.env.TOKEN_SECRET);
 
     const user = await User.findOne({ email: tokenData.email });
-
-    console.log(user);
   },
 
   loginUser: async (req, res) => {
@@ -159,6 +184,16 @@ const user = {
       process.env.TOKEN_SECRET
     );
     res.status(200).header('auth-token', token).send(token);
+  },
+
+  findUserByJWT: async (req, res) => {
+    try {
+      const token = req.body.token;
+      const user = jwt.verify(token, process.env.TOKEN_SECRET);
+      res.status(200).send(user);
+    } catch (err) {
+      res.status(400).send(err);
+    }
   },
 };
 

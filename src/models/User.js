@@ -25,6 +25,10 @@ const UserSchema = new mongoose.Schema({
     enum: USER_TYPES,
     required: true,
   },
+  createdAt: {
+    type: Date,
+    default: Date.now(),
+  },
   verified: {
     type: Boolean,
     default: false,

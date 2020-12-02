@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import mongooseURLSlugs from 'mongoose-url-slugs';
 import { USER_TYPES } from './User.js';
 
 const PostSchema = new mongoose.Schema({
@@ -17,7 +16,7 @@ const PostSchema = new mongoose.Schema({
     required: true,
   },
   content: String,
-  date: {
+  createdAt: {
     type: Date,
     default: Date.now(),
   },
@@ -26,7 +25,5 @@ const PostSchema = new mongoose.Schema({
     default: false,
   },
 });
-
-PostSchema.plugin(mongooseURLSlugs('title', { field: 'slug', update: true }));
 
 export default mongoose.model('Post', PostSchema);

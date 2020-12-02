@@ -13,6 +13,7 @@ const registerValidation = Joi.object({
     .required()
     .valid(...USER_TYPES),
   retypedPassword: Joi.string().required().min(6),
+  date: Joi.string(),
 });
 
 const loginValidation = Joi.object({

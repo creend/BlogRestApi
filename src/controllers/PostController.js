@@ -14,9 +14,13 @@ const post = {
     };
     const { error } = validatePost(newPostBody);
 
-    if (error) return res.status(400).send(error.details[0].message);
-    if (req.user.type == USER_TYPES[2])
+    if (error) {
+      return res.status(400).send(error.details[0].message);
+    }
+
+    if (req.user.type == USER_TYPES[2]) {
       return res.status(400).send('Access denied');
+    }
 
     const post = new Post(newPostBody);
 
@@ -24,55 +28,62 @@ const post = {
       const savedPost = await post.save();
       res.status(200).send(savedPost);
     } catch (err) {
-      res.status(400).send(err);
+      res.status(400).send({ err });
     }
   },
 
-  getPosts: async (req, res) => {
-    const userPostQuery = req.query.q;
+  findPosts: async (req, res) => {
     const searchRule = {};
-    if (userPostQuery) {
-      const regExp = new RegExp(`.*${userPostQuery}.*`, 'i');
+
+    const postQuery = req.query.q;
+    const postOrder =
+      req.query.order !== 'desc' && req.query.order !== 'asc'
+        ? 'desc'
+        : req.query.order;
+    const page =
+      parseInt(req.query.page) - 1 >= 0 ? parseInt(req.query.page) || 0 : 1;
+
+    const perPage = parseInt(req.query.per_page) || 2;
+
+    if (postQuery) {
+      const regExp = new RegExp(`.*${postQuery}.*`, 'i');
       searchRule.title = regExp;
     }
+
     try {
-      const findedPosts = await Post.find(searchRule);
-      if (findedPosts.length <= 0)
-        return res
-          .status(400)
-          .send(`Cannot find posts called ${userPostQuery}`);
-      res.status(200).send(findedPosts);
+      const findedPosts = await Post.find(searchRule)
+        .skip(page - 1)
+        .limit(perPage)
+        .sort({
+          createdAt: postOrder,
+        });
+
+      const count = await Post.countDocuments(searchRule);
+      const requiredPages = Math.ceil(count / perPage);
+
+      if (findedPosts.length <= 0) {
+        return res.status(400).send(`Cannot find posts`);
+      }
+
+      res.status(200).send({ posts: findedPosts, count, requiredPages });
     } catch (err) {
       return res.status(400).send(err);
     }
   },
 
-  getPost: (req, res) => {
-    Post.findOne({ slug: req.params.slug }, (err, data) => {
-      if (err) return res.status(400).send(err);
-      res.status(200).send(data);
-    });
-  },
-
   findPost: async (req, res) => {
     try {
-      const userPostQuery = req.query.q;
-      const regExp = new RegExp(`.*${userPostQuery}.*`);
-      const postsFinded = await Post.find({ title: regExp });
-      console.log(postsFinded);
-      if (postsFinded.length <= 0)
-        return res.status(400).send(`Cannot find post called ${req.query.q}`);
-      res.status(200).send(postsFinded);
+      const post = await Post.findOne({ _id: req.params.id });
+      if (!post) return res.status(400).send({ err: 'Cannot find post' });
+      res.status(200).send(post);
     } catch (err) {
-      res.status(400).send(err);
+      res.status(400).send(`Cannot find post with id: ${req.params.id}`);
     }
   },
 
   editPost: async (req, res) => {
-    // JESZCZE DO DOPRACOWANIA
     try {
-      const searchedPost = await Post.findOne({ slug: req.params.slug });
-      console.log(searchedPost);
+      const searchedPost = await Post.findOne({ _id: req.params.id });
       if (
         searchedPost.userType === USER_TYPES[1] ||
         searchedPost.author === req.user.username
@@ -80,13 +91,12 @@ const post = {
         const newPostBody = {
           edited: true,
           userType: searchedPost.userType,
-          date: searchedPost.date,
+          createdAt: searchedPost.createdAt,
           title: req.body.title,
           content: req.body.content,
           author: searchedPost.author,
         };
         await searchedPost.update(newPostBody);
-        console.log(searchedPost);
         res.status(200).send(searchedPost);
       } else {
         res.status(400).send('Access denied');
@@ -98,13 +108,13 @@ const post = {
 
   deletePost: async (req, res) => {
     try {
-      const searchedPost = await Post.findOne({ slug: req.params.slug });
+      const searchedPost = await Post.findOne({ _id: req.params.id });
       if (!searchedPost) return res.status(400).send('Post doesnt exist');
       if (
         searchedPost.userType === USER_TYPES[1] ||
         searchedPost.author === req.user.username
       ) {
-        await Post.deleteOne({ slug: req.params.slug });
+        await Post.deleteOne({ _id: req.params.id });
         res.status(200).send('Succesfuely deleted');
       } else {
         res.status(400).send('Access denied');

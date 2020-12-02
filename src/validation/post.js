@@ -8,7 +8,7 @@ const postValidation = Joi.object({
     .valid(...USER_TYPES),
   title: Joi.string().required().min(1),
   content: Joi.string().required().min(1),
-  date: Joi.string(),
+  createdAt: Joi.string(),
   edited: Joi.boolean(),
 });
 
