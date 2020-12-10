@@ -4,21 +4,19 @@ import nodemailer from 'nodemailer';
 import User from '../models/User.js';
 import { validateRegister, validateLogin } from '../validation/user.js';
 
-const user = {
-  registerUser: async (req, res) => {
+class UserController {
+  registerUser = async (req, res) => {
     const { error } = validateRegister(req.body);
-    if (error) return res.status(400).send({ error: error.details[0].message });
+    if (error) return res.status(400).send(error.details[0].message);
 
     const emailExist = await User.findOne({ email: req.body.email });
-    if (emailExist)
-      return res.status(400).send({ error: 'Email already exist' });
+    if (emailExist) return res.status(400).send('Email already exist');
 
     const usernameExist = await User.findOne({ username: req.body.username });
-    if (usernameExist)
-      return res.status(400).send({ error: `Username already exist` });
+    if (usernameExist) return res.status(400).send(`Username already exist`);
 
     if (req.body.password !== req.body.retypedPassword)
-      return res.status(400).send({ error: `Passwords are not identical` });
+      return res.status(400).send(`Passwords are not identical`);
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);
@@ -36,8 +34,6 @@ const user = {
         _id: user._id,
         username: user.username,
         type: user.type,
-        password: user.password,
-        email: user.email,
         verified: user.verified,
       },
       process.env.TOKEN_SECRET
@@ -83,9 +79,9 @@ const user = {
     } catch (err) {
       return res.status(404).send(err);
     }
-  },
+  };
 
-  verifyUser: async (req, res) => {
+  verifyUser = async (req, res) => {
     const token = req.query.t;
     const verifiedUser = jwt.verify(token, process.env.TOKEN_SECRET);
     verifiedUser.verified = true;
@@ -96,9 +92,9 @@ const user = {
     } catch (err) {
       res.status(400).send(err);
     }
-  },
+  };
 
-  sendPasswordResetMail: async (req, res) => {
+  sendPasswordResetMail = async (req, res) => {
     // DO DOPRACOWANIA
     const email = req.body.email;
     const user = await User.findOne({ email });
@@ -144,23 +140,22 @@ const user = {
     } catch (err) {
       res.status(400).send(err);
     }
-  },
+  };
 
-  resetPassword: async (req, res) => {
+  resetPassword = async (req, res) => {
     // DO DOPRACOWANIA
     const token = req.query.t;
     const tokenData = jwt.verify(token, process.env.TOKEN_SECRET);
 
     const user = await User.findOne({ email: tokenData.email });
-  },
+  };
 
-  loginUser: async (req, res) => {
+  loginUser = async (req, res) => {
     const { error } = validateLogin(req.body);
-    if (error) return res.status(400).send({ error: error.details[0].message });
+    if (error) return res.status(400).send(error.details[0].message);
 
     const user = await User.findOne({ email: req.body.email });
-    if (!user)
-      return res.status(400).send({ err: `Email or password is incorrect` });
+    if (!user) return res.status(400).send(`Email or password is incorrect`);
 
     const validPassword = await bcrypt.compare(
       req.body.password,
@@ -168,25 +163,23 @@ const user = {
     );
 
     if (!validPassword)
-      return res.status(400).send({ err: `Email or password is incorrect` });
+      return res.status(400).send(`Email or password is incorrect`);
 
     if (!user.verified)
-      return res.status(400).send({ err: `Your account isn't verified` });
+      return res.status(400).send(`Your account isn't verified`);
     const token = jwt.sign(
       {
         _id: user._id,
         username: user.username,
         type: user.type,
-        password: user.password,
-        email: user.email,
         verified: user.verified,
       },
       process.env.TOKEN_SECRET
     );
     res.status(200).header('auth-token', token).send(token);
-  },
+  };
 
-  findUserByJWT: async (req, res) => {
+  findUserByJWT = async (req, res) => {
     try {
       const token = req.body.token;
       const user = jwt.verify(token, process.env.TOKEN_SECRET);
@@ -194,7 +187,7 @@ const user = {
     } catch (err) {
       res.status(400).send(err);
     }
-  },
-};
+  };
+}
 
-export default user;
+export default UserController;

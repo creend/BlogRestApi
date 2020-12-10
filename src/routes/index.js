@@ -1,24 +1,26 @@
 import express from 'express';
-import user from '../controllers/UserController.js';
-import post from '../controllers/PostController.js';
+import UserController from '../controllers/UserController.js';
+import PostController from '../controllers/PostController.js';
 import verifyToken from '../middleweares/verifyToken.js';
 
+const postController = new PostController();
+const userController = new UserController();
 const router = express.Router();
 
-router.get('/posts', post.findPosts);
-router.get('/posts/:title', post.findPost);
-router.get('/verify', user.verifyUser);
-router.get('/reset/mail', user.resetPassword);
+router.get('/posts', postController.findPosts);
+router.get('/posts/:title', postController.findPost);
+router.get('/verify', userController.verifyUser);
+router.get('/reset/mail', userController.resetPassword);
 
-router.post('/register', user.registerUser);
-router.post('/login', user.loginUser);
-router.post('/reset/mail', user.sendPasswordResetMail);
+router.post('/register', userController.registerUser);
+router.post('/login', userController.loginUser);
+router.post('/reset/mail', userController.sendPasswordResetMail);
 router.post('/reset/password');
-router.post('/posts', verifyToken, post.addNewPost);
-router.post('/user', user.findUserByJWT);
+router.post('/posts', verifyToken, postController.addNewPost);
+router.post('/user', userController.findUserByJWT);
 
-router.put('/posts/:title', verifyToken, post.editPost);
+router.put('/posts/:title', verifyToken, postController.editPost);
 
-router.delete('/posts/:title', verifyToken, post.deletePost);
+router.delete('/posts/:title', verifyToken, postController.deletePost);
 
 export default router;

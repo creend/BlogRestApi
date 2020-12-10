@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 import { validatePost } from '../validation/post.js';
 import { USER_TYPES } from '../models/User.js';
 
-const post = {
-  addNewPost: async (req, res) => {
+class PostController {
+  addNewPost = async (req, res) => {
     const newPostBody = {
       author: req.user.username,
       userType: req.user.type,
@@ -29,12 +29,12 @@ const post = {
     } catch (err) {
       res.status(400).send('Cannot add post with the same title');
     }
-  },
+  };
 
-  findPosts: async (req, res) => {
+  findPosts = async (req, res) => {
     const searchRule = {};
 
-    const postQuery = req.query.q;
+    const postQuery = req.query.q ? decodeURI(req.query.q) : null;
     const postOrder =
       req.query.order !== 'desc' && req.query.order !== 'asc'
         ? 'desc'
@@ -42,16 +42,19 @@ const post = {
     const page =
       parseInt(req.query.page) - 1 >= 0 ? parseInt(req.query.page) || 0 : 1;
 
-    const perPage = parseInt(req.query.per_page) || 2;
+    // const perPage = parseInt(req.query.per_page) || 2;
+    const perPage = 2;
+
+    const skip = (page - 1) * perPage;
 
     if (postQuery) {
-      const regExp = new RegExp(`.*${postQuery}.*`, 'i');
+      const regExp = new RegExp(`.*${postQuery.replace(/\s/g, '-')}.*`, 'i');
       searchRule.title = regExp;
     }
 
     try {
       const findedPosts = await Post.find(searchRule)
-        .skip(page - 1)
+        .skip(skip)
         .limit(perPage)
         .sort({
           createdAt: postOrder,
@@ -68,20 +71,20 @@ const post = {
     } catch (err) {
       return res.status(400).send(err);
     }
-  },
+  };
 
-  findPost: async (req, res) => {
+  findPost = async (req, res) => {
     try {
       const post = await Post.findOne({ title: req.params.title });
-      if (!post) return res.status(400).send({ err: 'Cannot find post' });
+      if (!post) return res.status(400).send('Cannot find post');
       post.title = req.params.title.replace(/\-/g, ' ');
       res.status(200).send(post);
     } catch (err) {
       res.status(400).send(`Cannot find post with title: ${req.params.title}`);
     }
-  },
+  };
 
-  editPost: async (req, res) => {
+  editPost = async (req, res) => {
     try {
       const searchedPost = await Post.findOne({ title: req.params.title });
       if (
@@ -97,7 +100,7 @@ const post = {
           author: searchedPost.author,
         };
         try {
-          await searchedPost.update(newPostBody);
+          await searchedPost.updateOne(newPostBody);
           res.status(200).send(searchedPost);
         } catch (err) {
           res.status(400).send('cannot set title like another post');
@@ -108,9 +111,9 @@ const post = {
     } catch (err) {
       res.status(400).send(err);
     }
-  },
+  };
 
-  deletePost: async (req, res) => {
+  deletePost = async (req, res) => {
     try {
       const searchedPost = await Post.findOne({ title: req.params.title });
       if (!searchedPost) return res.status(400).send('Post doesnt exist');
@@ -126,7 +129,7 @@ const post = {
     } catch (err) {
       res.status(400).send(err);
     }
-  },
-};
+  };
+}
 
-export default post;
+export default PostController;
