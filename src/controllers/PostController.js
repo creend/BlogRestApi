@@ -64,7 +64,7 @@ class PostController {
       const requiredPages = Math.ceil(count / perPage);
 
       if (findedPosts.length <= 0) {
-        return res.status(400).send(`Cannot find posts`);
+        return res.status(400).send(`Cannot find posts with ${postQuery}`);
       }
 
       res.status(200).send({ posts: findedPosts, count, requiredPages });
@@ -76,7 +76,10 @@ class PostController {
   findPost = async (req, res) => {
     try {
       const post = await Post.findOne({ title: req.params.title });
-      if (!post) return res.status(400).send('Cannot find post');
+      if (!post)
+        return res
+          .status(400)
+          .send(`Cannot find post with title: ${req.params.title}`);
       post.title = req.params.title.replace(/\-/g, ' ');
       res.status(200).send(post);
     } catch (err) {
@@ -103,7 +106,7 @@ class PostController {
           await searchedPost.updateOne(newPostBody);
           res.status(200).send(searchedPost);
         } catch (err) {
-          res.status(400).send('cannot set title like another post');
+          res.status(400).send('Cannot set title like another post');
         }
       } else {
         res.status(400).send('Access denied');
